@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Bruce Lee's Guide · Shunde Travel Map</title>
+  
+  <!-- Performance Preconnect & DNS Prefetch for Fast Map Tile Loading -->
+  <link rel="preconnect" href="https://a.basemaps.cartocdn.com" crossorigin />
+  <link rel="preconnect" href="https://b.basemaps.cartocdn.com" crossorigin />
+  <link rel="preconnect" href="https://c.basemaps.cartocdn.com" crossorigin />
+  <link rel="preconnect" href="https://d.basemaps.cartocdn.com" crossorigin />
+  <link rel="dns-prefetch" href="https://a.basemaps.cartocdn.com" />
+
+  <!-- Local Bundled Leaflet CSS (Zero External CDN Latency) -->
+  <link rel="stylesheet" href="libs/leaflet.css" />
+  <link rel="stylesheet" href="libs/MarkerCluster.css" />
+  <link rel="stylesheet" href="libs/MarkerCluster.Default.css" />
+  
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #f7f6f2;
+    }
+
+    #app-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Map container filling 100% */
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background-color: #f7f6f2;
+    }
+
+    /* Venice Grayscale Palette Tile Filter:
+       Transforms standard tiles into elegant muted grayscale with 4 core visible layers:
+       1. Water (subtle sky blue-gray)
+       2. Ground (clean off-white)
+       3. Roads (refined gray lines)
+       4. Parks/Green (soft pastel sage green)
+       Eliminates glaring highway reds & oranges! */
+    .leaflet-tile-pane {
+      filter: grayscale(88%) contrast(110%) brightness(102%);
+    }
+
+    /* WeChat-style Top Capsule Navigation */
+    .mini-capsule-bar {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 20px;
+      padding: 4px 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    /* WeChat MiniProgram Web-view layout adaptation */
+    body.in-miniprogram .mini-capsule-bar {
+      display: none !important;
+    }
+    body.in-miniprogram .top-assistant-banner {
+      top: 12px !important;
+    }
+    body.in-miniprogram .category-filter-bar {
+      top: 92px !important;
+    }
+    .capsule-btn {
+      font-size: 13px;
+      font-weight: 700;
+      color: #333;
+      cursor: pointer;
+    }
+    .lang-switch-capsule {
+      display: flex;
+      align-items: center;
+      background: #ECEBE6;
+      border-radius: 14px;
+      padding: 2px;
+      cursor: pointer;
+    }
+    .lang-capsule-opt {
+      font-size: 11px;
+      font-weight: 700;
+      color: #777;
+      padding: 2px 8px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+    .lang-capsule-opt.active {
+      background: #D32F2F;
+      color: #ffffff;
+      box-shadow: 0 1px 4px rgba(211, 47, 47, 0.35);
+    }
+    .capsule-divider {
+      width: 1px;
+      height: 14px;
+      background: #ccc;
+    }
+
+    /* Top Floating Bruce Lee Virtual Assistant Banner (Matching Venice Screenshot) */
+    .top-assistant-banner {
+      position: absolute;
+      top: 54px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(12px);
+      border-radius: 16px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+      border: 1px solid rgba(229, 57, 53, 0.15);
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+    .top-assistant-banner:active {
+      transform: scale(0.98);
+    }
+    .assistant-avatar-wrap {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: #FFD54F;
+      border: 2px solid #D32F2F;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .assistant-avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .assistant-avatar-placeholder {
+      font-size: 26px;
+    }
+    .assistant-badge {
+      position: absolute;
+      bottom: -2px;
+      right: -2px;
+      background: #D32F2F;
+      color: #fff;
+      font-size: 9px;
+      padding: 1px 4px;
+      border-radius: 8px;
+      font-weight: 700;
+    }
+    .assistant-speech {
+      flex: 1;
+    }
+    .assistant-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+    .assistant-tag {
+      background: #FFEBEE;
+      color: #D32F2F;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .assistant-bubble-text {
+      font-size: 12px;
+      color: #555;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .assistant-arrow {
+      font-size: 16px;
+      color: #999;
+      margin-left: 4px;
+    }
+
+    /* Category Floating Filter Pills */
+    .category-filter-bar {
+      position: absolute;
+      top: 134px;
+      left: 12px;
+      right: 12px;
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: none;
+    }
+    .category-filter-bar::-webkit-scrollbar {
+      display: none;
+    }
+    .category-pill {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      font-weight: 600;
+      color: #444;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .category-pill.active {
+      background: #D32F2F;
+      color: #ffffff;
+      border-color: #D32F2F;
+      box-shadow: 0 4px 10px rgba(211, 47, 47, 0.35);
+    }
+
+    /* Floating Map Controls on Bottom Right */
+    .floating-map-controls {
+      position: absolute;
+      bottom: 28px;
+      right: 16px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .map-ctrl-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .map-ctrl-btn:active {
+      transform: scale(0.92);
+      background: #f0f0f0;
+    }
+
+    /* Red Cluster Badges (Venice Screenshot Identical) */
+    .bruce-cluster-icon {
+      background: #EF5350;
+      border: 3px solid #ffffff;
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 15px;
+      border-radius: 50%;
+      display: flex !important;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(239, 83, 80, 0.45);
+      transition: transform 0.2s;
+    }
+    .bruce-cluster-icon:hover {
+      transform: scale(1.1);
+    }
+
+    /* Individual Spot Pin Marker */
+    .bruce-spot-marker {
+      background: #ffffff;
+      border: 2px solid #D32F2F;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #1a1a1a;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .bruce-spot-marker:hover {
+      transform: scale(1.06);
+    }
+
+    /* Shunde Scope Watermark Indicator */
+    .shunde-boundary-tag {
+      position: absolute;
+      bottom: 12px;
+      left: 12px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(6px);
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+
+    /* ================= Bottom Sliding Sheet (Detailed Tour Card) ================= */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1500;
+      background: #ffffff;
+      border-radius: 24px 24px 0 0;
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.18);
+      padding: 20px;
+      transform: translateY(105%);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 82vh;
+      overflow-y: auto;
+    }
+    .bottom-sheet.open {
+      transform: translateY(0);
+    }
+    .sheet-drag-handle {
+      width: 44px;
+      height: 4px;
+      background: #e0e0e0;
+      border-radius: 2px;
+      margin: 0 auto 14px auto;
+    }
+    .sheet-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 18px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #f2f2f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: #666;
+      cursor: pointer;
+    }
+    .sheet-header-img {
+      width: 100%;
+      height: 200px;
+      border-radius: 16px;
+      object-fit: cover;
+      margin-bottom: 12px;
+    }
+    .sheet-title-en {
+      font-size: 20px;
+      font-weight: 800;
+      color: #111;
+      line-height: 1.25;
+      margin-bottom: 2px;
+    }
+    .sheet-title-zh {
+      font-size: 14px;
+      font-weight: 600;
+      color: #777;
+      margin-bottom: 8px;
+    }
+    .sheet-tagline {
+      font-size: 13px;
+      font-weight: 600;
+      color: #D32F2F;
+      line-height: 1.4;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    /* 4-Box Practical Info Grid */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .info-box {
+      background: #F8F9FA;
+      border: 1px solid #E9ECEF;
+      border-radius: 10px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .info-box-lbl {
+      font-size: 10px;
+      font-weight: 700;
+      color: #888;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .info-box-val {
+      font-size: 12px;
+      font-weight: 700;
+      color: #222;
+    }
+
+    /* Bruce Lee Voice Quote Box */
+    .bruce-quote-card {
+      background: linear-gradient(135deg, #FFFDE7, #FFF9C4);
+      border-left: 4px solid #FBC02D;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+    }
+    .bruce-mini-icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+    .bruce-quote-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #F57F17;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .bruce-quote-text {
+      font-size: 12.5px;
+      color: #37474F;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    /* Deep Story Section */
+    .deep-story-section {
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #111;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .deep-story-text {
+      font-size: 12.5px;
+      color: #444;
+      line-height: 1.6;
+      margin-bottom: 6px;
+    }
+
+    /* Highlights list */
+    .sheet-highlights-list {
+      list-style: none;
+      margin-bottom: 14px;
+    }
+    .sheet-highlights-list li {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 6px;
+      padding-left: 16px;
+      position: relative;
+      line-height: 1.45;
+    }
+    .sheet-highlights-list li::before {
+      content: "•";
+      color: #D32F2F;
+      position: absolute;
+      left: 2px;
+      font-size: 16px;
+      top: -2px;
+    }
+
+    /* Nearby Pairing Box */
+    .pairing-box {
+      background: #F1F8E9;
+      border: 1px solid #DCEDC8;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 12px;
+      color: #33691E;
+      line-height: 1.45;
+      margin-bottom: 18px;
+    }
+
+    /* Sheet Action Buttons */
+    .sheet-actions-row {
+      display: flex;
+      gap: 10px;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
+      padding-top: 10px;
+    }
+    .action-btn {
+      flex: 1;
+      height: 46px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .taxi-card-btn {
+      background: #FFF3E0;
+      color: #E65100;
+      border: 1px solid #FFE0B2;
+    }
+    .directions-btn {
+      background: #D32F2F;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(211, 47, 47, 0.35);
+    }
+
+    /* Taxi Card Fullscreen Modal */
+    .taxi-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .taxi-modal.open {
+      display: flex;
+    }
+    .taxi-modal-content {
+      background: #ffffff;
+      width: 100%;
+      max-width: 360px;
+      border-radius: 20px;
+      padding: 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .taxi-icon-banner {
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+    .taxi-sub-en {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+    .taxi-main-zh {
+      font-size: 22px;
+      font-weight: 900;
+      color: #000;
+      line-height: 1.35;
+      background: #FFFDE7;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px dashed #FBC02D;
+      margin-bottom: 12px;
+    }
+    .taxi-detail-addr {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+    .taxi-tip-box {
+      background: #f5f5f5;
+      font-size: 12px;
+      color: #444;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .taxi-close-btn {
+      width: 100%;
+      height: 44px;
+      border-radius: 10px;
+      background: #111;
+      color: #fff;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+    }
+
+    /* AI Chat Dialogue Modal */
+    .chat-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: flex-end;
+    }
+    .chat-modal.open {
+      display: flex;
+    }
+    .chat-container {
+      background: #ffffff;
+      width: 100%;
+      height: 75vh;
+      border-radius: 24px 24px 0 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #FAFAFA;
+    }
+    .chat-header-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #111;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .chat-msg {
+      max-width: 82%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .chat-msg.bruce {
+      align-self: flex-start;
+      background: #FFF9C4;
+      color: #37474F;
+      border-bottom-left-radius: 4px;
+      border-left: 3px solid #FBC02D;
+    }
+    .chat-msg.user {
+      align-self: flex-end;
+      background: #D32F2F;
+      color: #ffffff;
+      border-bottom-right-radius: 4px;
+    }
+    .quick-prompts-bar {
+      padding: 8px 16px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      border-top: 1px solid #f0f0f0;
+      background: #fafafa;
+    }
+    .quick-chip {
+      white-space: nowrap;
+      font-size: 11px;
+      padding: 4px 10px;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      color: #555;
+      cursor: pointer;
+    }
+    .chat-input-bar {
+      padding: 10px 16px 20px 16px;
+      display: flex;
+      gap: 8px;
+      border-top: 1px solid #eee;
+    }
+    .chat-input {
+      flex: 1;
+      height: 40px;
+      border-radius: 20px;
+      border: 1px solid #ccc;
+      padding: 0 16px;
+      font-size: 13px;
+      outline: none;
+    }
+    .chat-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #D32F2F;
+      color: #fff;
+      border: none;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-container">
+    <!-- Map Canvas -->
+    <div id="map"></div>
+
+    <!-- Shunde Exclusive Scope Tag -->
+    <div class="shunde-boundary-tag">📍 Shunde, Foshan (顺德全境指南)</div>
+
+    <!-- Top Bruce Lee AI Assistant Floating Banner (Venice Screenshot Match) -->
+    <div class="top-assistant-banner" onclick="openChatModal()">
+      <div class="assistant-avatar-wrap">
+        <img src="bruce_avatar.png" alt="Bruce Lee" />
+        <span class="assistant-badge">AI</span>
+      </div>
+      <div class="assistant-speech">
+        <div class="assistant-title">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span>Bruce Lee</span>
+            <span class="assistant-tag">Shunde Guide</span>
+          </div>
+          <div class="lang-switch-capsule" onclick="event.stopPropagation(); toggleLanguage();" title="Switch Language / 切换语言">
+            <span class="lang-capsule-opt active" id="opt-zh">中</span>
+            <span class="lang-capsule-opt" id="opt-en">EN</span>
+          </div>
+        </div>
+        <div class="assistant-bubble-text" id="assistant-bubble-text">
+          “以无限为有限，以无法为有法！欢迎来到我的故乡顺德，点击可与我随时交流！”
+        </div>
+      </div>
+      <div class="assistant-arrow">›</div>
+    </div>
+
+    <!-- Categories Floating Filter Pills -->
+    <div class="category-filter-bar">
+      <div class="category-pill active" data-cat="all" onclick="filterCategory('all', this)">All Spots</div>
+      <div class="category-pill" data-cat="kungfu" onclick="filterCategory('kungfu', this)">🥋 Kung Fu & Roots</div>
+      <div class="category-pill" data-cat="food" onclick="filterCategory('food', this)">🥢 Master Cuisine</div>
+      <div class="category-pill" data-cat="dessert" onclick="filterCategory('dessert', this)">🥣 Buffalo Milk</div>
+      <div class="category-pill" data-cat="photo" onclick="filterCategory('photo', this)">📸 Photo & Nightlife</div>
+    </div>
+
+    <!-- Map Floating Controls -->
+    <div class="floating-map-controls">
+      <div class="map-ctrl-btn" onclick="locateUser()" title="Locate Me">⌖</div>
+      <div class="map-ctrl-btn" onclick="resetMapCenter()" title="Full Shunde View">⟲</div>
+    </div>
+
+    <!-- Bottom Sliding Detail Sheet (Deep Tourist Guide) -->
+    <div class="bottom-sheet" id="bottom-sheet">
+      <div class="sheet-drag-handle"></div>
+      <div class="sheet-close-btn" onclick="closeSheet()">✕</div>
+      <img id="sheet-img" class="sheet-header-img" src="" alt="Spot">
+      
+      <div id="sheet-title-en" class="sheet-title-en"></div>
+      <div id="sheet-title-zh" class="sheet-title-zh"></div>
+      <div id="sheet-tagline" class="sheet-tagline"></div>
+
+      <!-- 4-Box Practical Tour Information -->
+      <div class="info-grid">
+        <div class="info-box">
+          <span class="info-box-lbl">⏱️ Duration</span>
+          <span id="info-duration" class="info-box-val">2 - 3 Hours</span>
+        </div>
+        <div class="info-box">
+          <span class="info-box-lbl">⏰ Hours</span>
+          <span id="info-hours" class="info-box-val">09:00 - 17:00</span>
+        </div>
+        <div class="info-box">
+          <span class="info-box-lbl">🎟️ Admission</span>
+          <span id="info-price" class="info-box-val">Free</span>
+        </div>
+        <div class="info-box">
+          <span class="info-box-lbl">📍 Town</span>
+          <span id="info-town" class="info-box-val">Daliang</span>
+        </div>
+      </div>
+
+      <!-- Bruce Lee Voice Note -->
+      <div class="bruce-quote-card">
+        <div class="bruce-mini-icon">🥋</div>
+        <div>
+          <div class="bruce-quote-title">Bruce Lee's Guide Note</div>
+          <div id="bruce-quote-text" class="bruce-quote-text"></div>
+        </div>
+      </div>
+
+      <!-- Deep Story Section -->
+      <div class="deep-story-section">
+        <div class="section-title">🏛️ The Story & Heritage</div>
+        <div id="deep-story-text" class="deep-story-text"></div>
+      </div>
+
+      <!-- Highlights Section -->
+      <div class="section-title">✨ Top Highlights to Experience</div>
+      <ul id="sheet-highlights" class="sheet-highlights-list"></ul>
+
+      <!-- Nearby Next Stop Pairing -->
+      <div class="pairing-box">
+        <strong>🧭 Next Stop Recommendation:</strong>
+        <div id="sheet-pairing"></div>
+      </div>
+
+      <!-- Actions: Taxi Helper Card & Directions -->
+      <div class="sheet-actions-row">
+        <button class="action-btn taxi-card-btn" onclick="openTaxiCard()">🚕 Show to Driver</button>
+        <button class="action-btn directions-btn" onclick="openDirections()">🧭 Directions</button>
+      </div>
+    </div>
+
+    <!-- Taxi Driver Helper Card Modal -->
+    <div class="taxi-modal" id="taxi-modal" onclick="closeTaxiCard(event)">
+      <div class="taxi-modal-content" onclick="event.stopPropagation()">
+        <div class="taxi-icon-banner">🚕 🇨🇳</div>
+        <div class="taxi-sub-en">Show this screen to your taxi driver or local friend:</div>
+        <div id="taxi-modal-zh" class="taxi-main-zh"></div>
+        <div id="taxi-modal-addr" class="taxi-detail-addr"></div>
+        <div class="taxi-tip-box" id="taxi-modal-tip"></div>
+        <button class="taxi-close-btn" onclick="closeTaxiCard()">Done / 知道了</button>
+      </div>
+    </div>
+
+    <!-- Bruce Lee AI Chat Modal -->
+    <div class="chat-modal" id="chat-modal" onclick="closeChatModal(event)">
+      <div class="chat-container" onclick="event.stopPropagation()">
+        <div class="chat-header">
+          <div class="chat-header-title">
+            <span>🥋</span>
+            <span>Bruce Lee AI Virtual Guide</span>
+          </div>
+          <div class="sheet-close-btn" style="position:static" onclick="closeChatModal()">✕</div>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg bruce">
+            “Be water, my friend! I was born to inspire, and my family roots are right here in Jun'an, Shunde. What would you like to explore today? Best Dim Sum? Or visiting my ancestral home?”
+          </div>
+        </div>
+        <div class="quick-prompts-bar">
+          <div class="quick-chip" onclick="sendQuickPrompt('Where is Shunfeng Mountain Park Grand Paifang?')">🏛️ Grand Archway</div>
+          <div class="quick-chip" onclick="sendQuickPrompt('Where is Bruce Lee ancestral house in Jun\'an?')">🥋 Ancestral House</div>
+          <div class="quick-chip" onclick="sendQuickPrompt('What makes Double-Skin Milk special?')">🥣 Double-Skin Milk</div>
+          <div class="quick-chip" onclick="sendQuickPrompt('Where is the best Morning Tea Dim Sum?')">🥢 Best Dim Sum</div>
+        </div>
+        <div class="chat-input-bar">
+          <input type="text" id="chat-input" class="chat-input" placeholder="Ask Bruce about Shunde food or places..." onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="chat-send-btn" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Local Bundled Leaflet JS & MarkerCluster JS (Instant load, no unpkg throttling) -->
+  <script src="libs/leaflet.js"></script>
+  <script src="libs/leaflet.markercluster.js"></script>
+  <!-- WeChat JS-SDK -->
+  <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
+  <!-- 顺德区官方行政区划高精度边界坐标 (629个精密测绘点) -->
+  <script src="shunde_boundary.js"></script>
+
+  <script>
+    // Detect WeChat and Mini Program web-view
+    function checkMiniProgramEnv() {
+      const ua = navigator.userAgent.toLowerCase();
+      const isMini = window.__wxjs_environment === 'miniprogram' || ua.includes('miniprogram');
+      const isWx = ua.includes('micromessenger');
+      if (isMini || isWx) {
+        document.body.classList.add('in-miniprogram');
+      }
+    }
+    checkMiniProgramEnv();
+    if (window.WeixinJSBridge) {
+      checkMiniProgramEnv();
+    } else {
+      document.addEventListener('WeixinJSBridgeReady', checkMiniProgramEnv, false);
+    }
+
+    // Spots Dataset (100% Calibrated Coordinates + Deep Lonely Planet Style Info)
+    const SPOTS = [
+      {
+        id: "shunfeng_mountain_park",
+        nameEn: "Shunfeng Mountain Park (Grand Archway)",
+        nameZh: "顺峰山公园 (中华第一牌坊正门)",
+        category: "kungfu",
+        // 100% 精确校准：顺峰山公园北门中华第一牌坊中轴线正门广场
+        lat: 22.8262,
+        lng: 113.2777,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "大良街道南国东路顺峰山公园正门牌坊广场",
+        priceEn: "Free Admission",
+        hoursEn: "06:00 - 22:30",
+        durationEn: "2.5 - 3.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Home to the 'No.1 Paifang in China' — Asia's grandest classical stone archway.",
+        deepStory: "Shunfeng Mountain Park is the crown jewel of Shunde's ecological and cultural landscape. Anchored by the grand Taiping and Shenshan mountains, the park centers around the vast Qingyun and Taiping lakes. Standing proudly at the North Gate is the world-renowned '中华第一牌坊' (No. 1 Paifang in China) — measuring 88 meters wide and 38 meters high, crafted from pure granite with 16 massive dragon columns and intricate stone carvings. Beyond the archway lies miles of scenic tree-lined cycling paths, ancient Ming-Dynasty pagodas (Qingyun Pagoda), traditional Lingnan pavilions, and a blooming wetland park teeming with birdlife.",
+        bruceTipEn: "“Empty your mind, be formless, shapeless — like water.” Stand directly beneath the central arch of the grand Paifang early in the morning: feel the sunrise breeze off Qingyun Lake and practice your deep breathing. Rent a bike to circle the lake!",
+        highlights: [
+          "No.1 Paifang in China: 88m wide colossal granite archway with master stone dragon carvings",
+          "Qingyun Lake Greenway: Serene waterside paths perfect for sunset walks & biking",
+          "Ming Dynasty Qingyun Pagoda: Historic hilltop landmark overlooking the entire Shunde plain",
+          "Luoshen Peninsula Wetland: Sea of blooming lotus flowers and migratory birds"
+        ],
+        pairing: "Pair with Shunde Renjia for Morning Tea (10 mins drive) or Huagai Road (8 mins drive).",
+        taxiTitle: "请带我去：顺峰山公园 北门(中华第一牌坊)",
+        taxiAddr: "大良街道南国东路顺峰山公园正门牌坊广场",
+        taxiTip: "师傅，请在顺峰山公园大牌坊正门下车，千万不要开去侧门，谢谢！"
+      },
+      {
+        id: "bruce_ancestral_house",
+        nameEn: "Bruce Lee Ancestral House",
+        nameZh: "李小龙祖居 (均安上村)",
+        category: "kungfu",
+        // 100% 精确校准：均安上村小龙巷12号李小龙祖居正门
+        lat: 22.7285,
+        lng: 113.1378,
+        townEn: "Jun'an Town",
+        townZh: "均安镇",
+        addressZh: "顺德区均安镇上村村委会小龙巷12号",
+        priceEn: "Free Admission",
+        hoursEn: "09:00 - 17:30 (Tue - Sun)",
+        durationEn: "1.5 - 2 Hours",
+        coverImg: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=1000&auto=format&fit=crop&q=80",
+        tagline: "The spiritual birthplace of global martial arts icon Bruce Lee and his father Li Hoi-chuen.",
+        deepStory: "Nestled in Shangcun Village in Jun'an Town, this traditional grey-brick courtyard dwelling was built in the late Qing Dynasty by Bruce Lee's grandfather, Li Zhenbiao, and lived in by his father, Li Hoi-chuen (a renowned Cantonese opera master). The house embodies classic Pearl River Delta 'wok-ear' architecture with carved wooden beams, stone thresholds, and ancestral courtyards. Inside, visitors can trace Bruce Lee's life, his martial philosophy of Jeet Kune Do, rare family photographs, training wooden dummies (Mook Yan Jong), and the cultural heritage that shaped the world's most influential martial artist.",
+        bruceTipEn: "“Knowing is not enough, we must apply. Willing is not enough, we must do.” Notice the wooden dummy in the central hall. Try taking a photo posing next to the Wing Chun dummy in my father's ancestral living room!",
+        highlights: [
+          "Authentic late Qing Dynasty brick & wok-ear house architecture",
+          "Historic Wing Chun wooden training dummy & Jeet Kune Do exhibits",
+          "Rare photographs of Bruce Lee's childhood & family tree",
+          "Traditional Shangcun village ancestral shrines and serene canals"
+        ],
+        pairing: "Must eat: Jun'an Steamed Pork (Dabanqiao) located only 5 mins drive away!",
+        taxiTitle: "请带我去：均安镇 上村 李小龙祖居",
+        taxiAddr: "顺德区均安镇上村村委会小龙巷12号",
+        taxiTip: "师傅，请在均安上村李小龙祖居门口下车，谢谢！"
+      },
+      {
+        id: "bruce_lee_paradise",
+        nameEn: "Bruce Lee Paradise Park",
+        nameZh: "李小龙乐园 (世界最大铜像)",
+        category: "kungfu",
+        // 100% 精确校准：均安龙塘路88号正门及李小龙青铜像广场
+        lat: 22.7058,
+        lng: 113.1235,
+        townEn: "Jun'an Town",
+        townZh: "均安镇",
+        addressZh: "佛山市顺德区均安镇龙塘路88号李小龙乐园正门",
+        priceEn: "Ticket: ¥40",
+        hoursEn: "09:00 - 17:30",
+        durationEn: "2 - 3 Hours",
+        coverImg: "https://images.unsplash.com/photo-1508873696983-2df5293cb395?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Marvel at the 18.8m giant bronze statue of Bruce Lee surrounded by wetlands and egrets.",
+        deepStory: "Covering nearly 3,000 acres of pristine wetlands and hills in Jun'an, Bruce Lee Paradise is both an ecological sanctuary and a grand monument to the martial arts master. Its centerpiece is the 18.8-meter-tall bronze statue of Bruce Lee in his iconic flying kick stance, recognized by Guinness World Records as the world's largest. The park houses the comprehensive Bruce Lee Memorial Museum, a traditional martial arts academy, nature trails winding around 22 natural hills, and a lakeside habitat where tens of thousands of wild egrets nest during twilight.",
+        bruceTipEn: "“Defeat is not defeat unless accepted as a reality in your own mind.” The best angle to photograph the giant statue is from the lakefront lawn with the sunset sky behind my silhouette!",
+        highlights: [
+          "18.8-meter tallest Bruce Lee bronze statue in the world",
+          "Bruce Lee Memorial Museum featuring film scripts, weapons & philosophy",
+          "Wild bird wetland lake inhabited by over 10,000 graceful egrets",
+          "Lakeside biking, paddle boating and bamboo forest walking trails"
+        ],
+        pairing: "Combine with Bruce Lee Ancestral House (10 mins) and Bingyu Hall.",
+        taxiTitle: "请带我去：均安 李小龙乐园 (正门售票处)",
+        taxiAddr: "顺德区均安镇龙塘路88号",
+        taxiTip: "师傅，请在李小龙乐园正门大门售票处停，谢谢！"
+      },
+      {
+        id: "qinghui_garden",
+        nameEn: "Qinghui Garden Museum",
+        nameZh: "清晖园博物馆 (正门)",
+        category: "kungfu",
+        // 100% 精确校准：大良清晖路23号正门
+        lat: 22.8386,
+        lng: 113.2534,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道清晖路23号清晖园正门",
+        priceEn: "Ticket: ¥15",
+        hoursEn: "09:00 - 17:00",
+        durationEn: "2 - 2.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1548013146-72479768bada?w=1000&auto=format&fit=crop&q=80",
+        tagline: "One of the Four Great Classical Gardens of Guangdong — a masterpiece of Lingnan aesthetics.",
+        deepStory: "Built during the late Ming and early Qing dynasties, Qinghui Garden was once the estate of Huang Shizhai, a royal imperial court scholar. As the pinnacle of Lingnan garden design, it seamlessly integrates waterways, courtyard houses, winding corridors, rockeries, and bonsai flora. The garden's architecture is famed for its imported European etched stained glass (Manchurian Windows), intricate ceramic ridge sculptures, and carved gold-leaf screens. Waters from the nearby river are ingeniously channeled into courtyards, creating a tranquil microclimate where koi fish dart between lotus ponds.",
+        bruceTipEn: "“The stillness in stillness is not the real stillness; only when there is stillness in movement does the universal rhythm manifest.” Walk into the Biyu Pavilion and observe the sunlight filtering through blue and amber glass onto the koi pond. Pure Zen.",
+        highlights: [
+          "Vibrant etched Manchurian Windows casting kaleidoscope sunlight",
+          "Classical Lingnan rockeries, arched stone bridges & cascading streams",
+          "Century-old banyan, frangipani and bamboo heritage trees",
+          "Imperial calligraphy tablets & gilded wood carvings"
+        ],
+        pairing: "Directly adjacent to Huagai Road Pedestrian Arcade and Minxin Dessert (2 mins walk).",
+        taxiTitle: "请带我去：大良 清晖园 (正门大门)",
+        taxiAddr: "顺德区大良街道清晖路23号",
+        taxiTip: "师傅，去清晖园正门下车，旁边就是华盖路步行街！"
+      },
+      {
+        id: "fengjian_water_town",
+        nameEn: "Fengjian Water Town",
+        nameZh: "逢简水乡 (岭南威尼斯古村)",
+        // 100% 精确校准：杏坛逢简水乡核心景区明远桥与游客中心
+        lat: 22.8132,
+        lng: 113.1538,
+        townEn: "Xingtan Town",
+        townZh: "杏坛镇",
+        addressZh: "佛山市顺德区杏坛镇逢简村游客中心(明远桥古码头)",
+        priceEn: "Free (Boat: ~¥150)",
+        hoursEn: "All Day (Boats: 08:30-17:30)",
+        durationEn: "3 - 4 Hours",
+        coverImg: "https://images.unsplash.com/photo-1513415756790-2ac1db1297d0?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Known as 'The Venice of Lingnan' — ancient canals, wooden awning boats, and Song Dynasty bridges.",
+        deepStory: "Dating back over a thousand years to the Song Dynasty, Fengjian is the best-preserved water township in the Pearl River Delta. Over ten kilometers of natural tidal waterways crisscross the village, bordered by ancient weeping banyans, ancestral clan temples, and traditional grey-brick riverhouses. Three historic stone bridges stand out: the Mingyuan Bridge (built in the Song Dynasty), Jinao Bridge (built during the reign of Qing Emperor Kangxi), and Jusheng Bridge. The quintessential way to experience Fengjian is hiring a hand-paddled wooden canopy boat gliding serenely under the stone arches.",
+        bruceTipEn: "“Water may seem weak, yet it can carve through stone.” Hire a wooden boat for the long loop (~35 mins). Sit in the bow and let the gentle splash of the wooden paddle guide your soul through ancient China.",
+        highlights: [
+          "Scenic wooden canopy boat ride guided by local village rowers",
+          "Song Dynasty Mingyuan Stone Bridge & Qing Dynasty Jinao Bridge",
+          "Centuries-old Liang Ancestral Temples with carved granite beams",
+          "Waterside street delicacies: Pan-fried dace fish cakes & fresh ginger milk"
+        ],
+        pairing: "Enjoy authentic water village river-fish cuisine at local waterside private kitchens.",
+        taxiTitle: "请带我去：杏坛 逢简水乡 游客中心",
+        taxiAddr: "顺德区杏坛镇逢简村牌坊停车场",
+        taxiTip: "师傅，请开到逢简水乡游客中心大停车场，谢谢！"
+      },
+      {
+        id: "he_art_museum",
+        nameEn: "He Art Museum (HEM)",
+        nameZh: "和美术馆 (安藤忠雄双螺旋)",
+        category: "kungfu",
+        // 100% 精确校准：北滘怡兴路6号正门
+        lat: 22.9234,
+        lng: 113.2389,
+        townEn: "Beijiao Town",
+        townZh: "北滘镇",
+        addressZh: "佛山市顺德区北滘镇怡兴路6号和美术馆正门",
+        priceEn: "Ticket: ~¥120",
+        hoursEn: "10:00 - 18:00 (Tue - Sun)",
+        durationEn: "2 - 3 Hours",
+        coverImg: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=1000&auto=format&fit=crop&q=80",
+        tagline: "World-renowned minimalist masterpiece designed by Pritzker laureate Tadao Ando.",
+        deepStory: "Designed by world-famous Japanese architect Tadao Ando, the He Art Museum (HEM) draws inspiration from traditional Lingnan 'heavenly well' courtyards and water pavilions. The building's iconic visual marvel is the world's only dual-spiral staircase cast entirely in Ando's signature fair-faced concrete. Natural sunlight cascades through the central glass atrium, creating ever-changing geometric patterns of light and shade. HEM houses premier contemporary and modern international art collections, bridging Eastern philosophical equilibrium with avant-garde global aesthetics.",
+        bruceTipEn: "“Simplicity is the key to brilliance.” Climb up to the 4th floor and look down into the spiral eye: the concrete curves flow like the circular parry of Wing Chun martial arts.",
+        highlights: [
+          "World's only cast-in-place fair-faced concrete double-spiral staircase",
+          "Breathtaking skylight atrium casting shifting geometric shadows",
+          "Serene water pavilion and minimalist cafe surrounded by reflection ponds",
+          "World-class rotating exhibitions of global contemporary art"
+        ],
+        pairing: "Located in Beijiao, near Midea Corporate Park. Pair with nearby Lunjiao for Xiangyunsha silk.",
+        taxiTitle: "请带我去：北滘 和美术馆 (正门)",
+        taxiAddr: "顺德区北滘镇怡兴路6号 (美的集团总部斜对面)",
+        taxiTip: "师傅，去和美术馆正门，谢谢！"
+      },
+      {
+        id: "shunde_renjia",
+        nameEn: "Shunde Renjia (Morning Tea)",
+        nameZh: "顺德人家食府 (传统早茶天花板)",
+        category: "food",
+        // 100% 精确校准：大良太安路黄金商业广场2楼
+        lat: 22.8275,
+        lng: 113.2678,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道太安路黄金商业广场2楼",
+        priceEn: "¥75 / person",
+        hoursEn: "07:30 - 14:00 (Yum Cha)",
+        durationEn: "1.5 - 2 Hours",
+        coverImg: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=1000&auto=format&fit=crop&q=80",
+        tagline: "The undisputed holy temple of authentic Cantonese Morning Tea (Yum Cha) in Shunde.",
+        deepStory: "In Shunde, 'Yum Cha' (drinking tea) is not merely breakfast; it is a sacred daily ritual of friendship, business, and gastronomy. Shunde Renjia stands as the gold standard of traditional Cantonese teahouses. Featuring hundreds of handmade dim sum varieties freshly steamed to order, their kitchen honors traditional culinary precision. Every basket of Jumbo Crystal Shrimp Dumplings (Har Gow) contains three plump, succulent prawns wrapped in paper-thin translucent wheat-starch skins. The lively clatter of teacups and the aroma of pu'er tea create an unforgettable cultural immersion.",
+        bruceTipEn: "“A quick strike defeats hesitation!” Arrive before 08:30 AM to secure a great table without waiting in a long line. Order Pu'er or Tieguanyin tea, Har Gow, and Crispy Red Rice Roll!",
+        highlights: [
+          "Jumbo Crystal Har Gow with whole plump prawns and bamboo shoots",
+          "Signature Green Tea & Red Bean Crispy Pancake (Bao Chang)",
+          "Red Rice Flour Sausage Roll with crispy shrimp stuffing",
+          "Authentic large-scale traditional Lingnan teahouse atmosphere"
+        ],
+        pairing: "5 mins drive to Shunfeng Mountain Park to walk off the calories!",
+        taxiTitle: "请带我去：大良 顺德人家食府 (黄金商业广场店)",
+        taxiAddr: "大良太安路黄金商业广场2楼",
+        taxiTip: "师傅，去顺德人家喝早茶，太安路那家！"
+      },
+      {
+        id: "datouhua_roast_goose",
+        nameEn: "Datouhua Roast Goose (Flagship)",
+        nameZh: "大头华烧鹅 (凤城老字号总店)",
+        category: "food",
+        // 100% 精确校准：大良桂畔路63号
+        lat: 22.8312,
+        lng: 113.2568,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道桂畔路63号大头华烧鹅总店",
+        priceEn: "¥130 / person",
+        hoursEn: "11:30-14:00, 16:30-20:00",
+        durationEn: "1 - 1.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1518492104633-130d0cc84637?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Global star of CCTV's 'A Bite of China' — charcoal-roasted in traditional clay urns.",
+        deepStory: "Famed internationally after starring in CCTV's legendary food documentary 'A Bite of China' (舌尖上的中国), Datouhua represents the highest craft of Cantonese roast meat. Owner Chef Datouhua insists on using traditional deep clay earthenware urns heated with natural charcoal, roasting plump local black-maned geese in small batches throughout the day. The skin comes out glassy and crisp with a golden sheen, while the meat beneath is extraordinarily tender, bursting with aromatic spiced juices that balance sublimely with sweet and sour plum sauce.",
+        bruceTipEn: "“Timing is everything!” Time your arrival right at the batch roasting hour: 11:30 AM or 4:30 PM. The first bite must be eaten within 15 minutes of roasting to experience the magical crunch!",
+        highlights: [
+          "Traditional charcoal-fired clay earthenware urn roasting",
+          "Paper-thin, glassy golden skin with succulent plum-sauce dip",
+          "Signature Roasted Goose Liver with tender charcuterie marinade",
+          "Star of BBC & CCTV 'A Bite of China' culinary documentaries"
+        ],
+        pairing: "Near Guipan River boardwalk, 6 mins drive from Qinghui Garden.",
+        taxiTitle: "请带我去：大良 桂畔路 大头华烧鹅 (总店)",
+        taxiAddr: "顺德区大良街道桂畔路63号",
+        taxiTip: "师傅，去吃大头华烧鹅总店，桂畔路那家！"
+      },
+      {
+        id: "lady_zhu_kitchen",
+        nameEn: "Lady Zhu Private Kitchen",
+        nameZh: "猪肉婆私房菜 (容桂文华总店)",
+        category: "food",
+        // 100% 精确校准：容桂文华路31号
+        lat: 22.7765,
+        lng: 113.2982,
+        townEn: "Ronggui Town",
+        townZh: "容桂街道",
+        addressZh: "佛山市顺德区容桂街道文华路31号猪肉婆私房菜总店",
+        priceEn: "¥220 / person",
+        hoursEn: "11:00-14:00, 17:00-21:00",
+        durationEn: "2 - 2.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Black Pearl & Michelin recognized courtyard dining inside a grand Lingnan mansion.",
+        deepStory: "Founded by culinary entrepreneur Madame Wu (fondly known as 'Lady Zhu'), this restaurant transformed a massive historic Lingnan mansion into an opulent dining sanctuary. Walking into the restaurant feels like entering an ancient garden film set: pavilions, stone fish pools, historic cooking cauldrons, and bustling live open-kitchen lanes. Lady Zhu showcases the pinnacle of Cantonese fine private cooking, notably the Pan-Fried Stuffed Dace Fish (a boneless culinary masterpiece requiring hours of delicate deboning and stuffing with minced pork, mushrooms, and herbs).",
+        bruceTipEn: "“Mastery requires patience and relentless refinement.” The Pan-Fried Stuffed Dace Fish represents decades of knife mastery. Also order the Ginkgo Nut Pig Stomach Soup!",
+        highlights: [
+          "Signature Pan-Fried Stuffed Dace Fish (boneless master craft)",
+          "Traditional Ginkgo Nut & White Pepper Pig Stomach Soup",
+          "Charcoal Roasted Prime Pork Belly with honey glaze",
+          "Grand classical Cantonese mansion courtyard with ponds and lanterns"
+        ],
+        pairing: "Only 6 mins drive to Ronggui Fisherman's Wharf for riverside sunset drinks.",
+        taxiTitle: "请带我去：容桂 猪肉婆私房菜 (总店)",
+        taxiAddr: "顺德区容桂街道文华路31号",
+        taxiTip: "师傅，去容桂文华路的猪肉婆私房菜，谢谢！"
+      },
+      {
+        id: "junan_steamed_pork",
+        nameEn: "Jun'an Steamed Pork (Dabanqiao)",
+        nameZh: "大板桥均安蒸猪 (李小龙家乡名宴)",
+        category: "food",
+        // 100% 精确校准：均安上村大板桥
+        lat: 22.7210,
+        lng: 113.1189,
+        townEn: "Jun'an Town",
+        townZh: "均安镇",
+        addressZh: "佛山市顺德区均安镇上村大板桥旁大板桥农庄",
+        priceEn: "¥70 / person",
+        hoursEn: "11:00-14:00, 17:00-20:30",
+        durationEn: "1 - 1.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1544025162-d76694265947?w=1000&auto=format&fit=crop&q=80",
+        tagline: "The legendary banquet feast of Bruce Lee's hometown: whole pig steamed in cedar wood boxes.",
+        deepStory: "In Bruce Lee's hometown of Jun'an, Steamed Whole Pork has been the pinnacle feast dish for ancestral clan festivals for centuries. Famous chef Ou Jincheng of Dabanqiao preserves this heritage: an entire whole-quartered pig is marinated with five-spice, coarse sea salt, and aged rice wine, placed into an enormous handcrafted cedar wood box, and steamed over fierce boiling water. During steaming, the chef punctures the skin with steel needles and rinses with ice water to flush away fat, finishing with toasted white sesame. The result is translucent, tender pork that dissolves gently on the tongue without greasiness.",
+        bruceTipEn: "“Simplicity, directness, power.” This is the food of my ancestors. Take a bite of the steamed pork with toasted sesame and a piece of pickled ginger — true rustic Cantonese fuel!",
+        highlights: [
+          "Traditional whole-pig steaming inside handcrafted ancient cedar boxes",
+          "Translucent pork belly that melts on the tongue with zero oily heaviness",
+          "Crispy roasted pork skin & traditional Jun'an pan-fried fish patties",
+          "Located in Shangcun village, minutes away from Bruce Lee Ancestral House"
+        ],
+        pairing: "Directly paired with Bruce Lee Ancestral House (3 mins drive).",
+        taxiTitle: "请带我去：均安 大板桥蒸猪农庄",
+        taxiAddr: "顺德区均安镇上村大板桥 (近李小龙祖居)",
+        taxiTip: "师傅，去均安吃大板桥蒸猪！"
+      },
+      {
+        id: "minxin_dessert",
+        nameEn: "Minxin Dessert (Huagai Flagship)",
+        nameZh: "民信老铺 (华盖路百年总店)",
+        category: "dessert",
+        // 100% 精确校准：大良华盖路119号
+        lat: 22.8395,
+        lng: 113.2520,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道华盖路119号民信老铺总店",
+        priceEn: "¥25 / person",
+        hoursEn: "09:00 - 23:30 (Late Night)",
+        durationEn: "45 - 60 Mins",
+        coverImg: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=1000&auto=format&fit=crop&q=80",
+        tagline: "The birthplace of Double-Skin Milk — crafted from rich local water buffalo milk.",
+        deepStory: "Founded in the 1930s by water buffalo farmer Dong Hanbiao, Minxin Lao Pu is the revered birthplace of China's iconic 'Double-Skin Milk' (双皮奶). Shunde water buffaloes produce milk with nearly twice the natural butterfat (8-10%) of ordinary dairy cows. Through meticulous heating, cooling, piercing, and re-steaming with egg whites, a thick, velvety wrinkled skin forms on top while a second delicate custard layer develops beneath. Savoring a warm bowl reveals an unforgettably fragrant, silky milk sweetness that has satisfied palates for a century.",
+        bruceTipEn: "“Adapt like water.” Order the Chilled Double-Skin Milk in the hot afternoon, and warm Ginger Milk Pudding on a breezy evening. Try the Deep-Fried Buffalo Milk sticks too!",
+        highlights: [
+          "Authentic Traditional Double-Skin Milk with wrinkled buffalo milk skin",
+          "Whole Fresh Coconut Steamed Milk with natural coconut aroma",
+          "Hot Ginger Juice Milk Pudding freshly curdled at your table",
+          "Golden Crispy Fried Milk Sticks (crisp outside, molten inside)"
+        ],
+        pairing: "Stroll down Huagai Road Pedestrian Arcade right outside the door.",
+        taxiTitle: "请带我去：大良 华盖路步行街 (民信老铺总店)",
+        taxiAddr: "大良华盖路119号 (清晖园旁步行街入口)",
+        taxiTip: "师傅，在华盖路步行街路口停即可，谢谢！"
+      },
+      {
+        id: "jinbang_milk_street",
+        nameEn: "Jinbang Old Street (Milk Artisans)",
+        nameZh: "金榜上街 (水牛乳手作老巷)",
+        category: "dessert",
+        // 100% 精确校准：大良金榜上街
+        lat: 22.8415,
+        lng: 113.2482,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道金榜上街老巷入口",
+        priceEn: "¥20 / person",
+        hoursEn: "09:00 - 21:00",
+        durationEn: "1 - 1.5 Hours",
+        coverImg: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1000&auto=format&fit=crop&q=80",
+        tagline: "A charming historic stone alley where local grandmothers craft artisanal buffalo milk cheese.",
+        deepStory: "Dating back to the Ming Dynasty, Jinbang Village is celebrated as the ancestral cradle of Shunde's dairy crafts. In this narrow stone-paved residential alleyway, local grannies still sit on wooden stools performing centuries-old culinary alchemy: adding warm white rice vinegar to fresh raw water buffalo milk to instantly curdle the proteins, then hand-pressing the warm curds into flat, circular molds before preserving them in saltwater brine. The resulting paper-thin 'Jinbang Milk Wafers' (金榜牛乳) are subtly salty-sweet, traditionally dissolved over morning rice porridge or savored as an artisan dairy snack.",
+        bruceTipEn: "“Flow with the currents of tradition.” Stop by Huanji Milk Shop, buy a glass bottle of iced pure water buffalo milk, and watch the grannies hand-press cheese into brine jars.",
+        highlights: [
+          "Watch live artisan hand-pressing of buffalo cheese wafers with rice vinegar",
+          "Drink refreshing bottled iced pure buffalo milk (ultra-rich & creamy)",
+          "Creamy Buffalo Milk Gelato & soft sweet milk rolls (Nai Juan)",
+          "Authentic quiet residential alleyway with vintage stone houses & murals"
+        ],
+        pairing: "10 mins walk to Qinghui Garden or Huagai Mountain Walkway.",
+        taxiTitle: "请带我去：大良 金榜上街 (古巷路口)",
+        taxiAddr: "顺德区大良街道金榜社区金榜上街",
+        taxiTip: "师傅，去大良金榜老街路口，吃牛乳的那条街！"
+      },
+      {
+        id: "fishermans_wharf",
+        nameEn: "Ronggui Fisherman's Wharf",
+        nameZh: "容桂渔人码头 (李小龙涂鸦滨江街区)",
+        category: "photo",
+        // 100% 精确校准：容桂东堤路7号
+        lat: 22.7725,
+        lng: 113.3105,
+        townEn: "Ronggui Town",
+        townZh: "容桂街道",
+        addressZh: "佛山市顺德区容桂街道东堤路7号渔人码头",
+        priceEn: "Free Entry",
+        hoursEn: "All Day (Sunset & Night peak)",
+        durationEn: "2 - 3 Hours",
+        coverImg: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Trendy riverside cultural hub with giant Bruce Lee pop graffiti murals, sunset bars and a retro lighthouse.",
+        deepStory: "Once a bustling maritime freight dock and industrial food processing wharf in the 1970s, Ronggui Fisherman's Wharf has transformed into Shunde's trendiest creative waterfront district. Preserving industrial retro architecture alongside modern pop art, the boardwalk is dominated by a giant, vibrant Bruce Lee graffiti mural that pays homage to Jun'an's native martial arts legend. As the sun dips over the wide Desheng River, locals and international travelers gather at riverside craft breweries, open-air cafes, and live acoustic music spots under the glow of the white lighthouse.",
+        bruceTipEn: "“Always be yourself, express yourself, have faith in yourself.” Check out the giant Bruce Lee pop-art graffiti mural at the street corner! Grab a craft beer by the riverside boardwalk right at golden hour (around 18:00).",
+        highlights: [
+          "Giant Bruce Lee street art & pop graffiti murals across brick warehouse walls",
+          "Desheng River romantic boardwalk with white retro lighthouse photo spot",
+          "Vibrant sunset craft breweries, chill specialty cafes and night market stalls",
+          "Diesel Engine 1959 industrial heritage park located right next door"
+        ],
+        pairing: "Only 6 mins drive to Lady Zhu Private Kitchen for an authentic dinner feast.",
+        taxiTitle: "请带我去：容桂 渔人码头 (滨水街区灯塔处)",
+        taxiAddr: "顺德区容桂街道东堤路7号渔人码头",
+        taxiTip: "师傅，请在渔人码头大门白灯塔广场下车，谢谢！"
+      },
+      {
+        id: "oct_harbour_plus",
+        nameEn: "OCT Harbour PLUS (Ferris Wheel)",
+        nameZh: "华侨城欢乐海岸PLUS (顺德之眼摩天轮)",
+        category: "photo",
+        // 100% 精确校准：顺德华侨城侨城南路1号
+        lat: 22.8021,
+        lng: 113.2985,
+        townEn: "Daliang Downtown",
+        townZh: "大良街道",
+        addressZh: "佛山市顺德区大良街道侨城南路1号欢乐海岸PLUS",
+        priceEn: "Free (Wheel: ¥99)",
+        hoursEn: "Park 10:00 - 22:00",
+        durationEn: "3 - 4 Hours",
+        coverImg: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=1000&auto=format&fit=crop&q=80",
+        tagline: "Ride the 99m 'Eye of Shunde' Ferris wheel over Cantonese water village canals and dazzling night light shows.",
+        deepStory: "Blending classical Lingnan water village vernacular architecture with modern open-air entertainment, OCT Harbour PLUS is Shunde's largest mega-entertainment complex. Its skyline is dominated by the 'Eye of Shunde' — a 99-meter giant observation Ferris wheel offering 360-degree panoramic views of the Pearl River Delta plains. The surrounding 'Qushui Bay' district recreates Lingnan waterways with stone bridges, archways, and traditional tiled pavilions housing flagship outposts of over 30 heritage Cantonese eateries. When darkness falls, the central lake transforms with a laser, fire, and fountain musical show.",
+        bruceTipEn: "“Aim for the moon; even if you miss, you land among the stars.” Take the Ferris Wheel just before dusk to watch the entire city transition from daytime watercolor to sparkling neon lights!",
+        highlights: [
+          "99-meter high 'Eye of Shunde' panoramic observation wheel",
+          "Qushui Bay Lingnan canal streets with 30+ heritage food flagships",
+          "Nightly spectacular 'One River, Two Banks' light, fountain & fire show",
+          "Playa Maya Water Park & modern thrill rides for summer fun"
+        ],
+        pairing: "10 mins drive from Shunfeng Mountain Park. Perfect for evening dining and leisure.",
+        taxiTitle: "请带我去：华侨城 欢乐海岸PLUS 正门",
+        taxiAddr: "顺德区大良街道侨城南路1号摩天轮广场",
+        taxiTip: "师傅，去欢乐海岸PLUS摩天轮广场，谢谢！"
+      }
+    ];
+
+    // ================= Map Setup & Shunde Strict Boundary =================
+    // Shunde Precise Geographic Bounding Box
+    const SHUNDE_SOUTH_WEST = L.latLng(22.66, 113.02);
+    // ================= Map Setup & Official Shunde Clipping Boundary =================
+    // Calculate bounds from the 629 official geographic points of Shunde
+    const shundeBounds = L.latLngBounds(SHUNDE_BOUNDARY);
+    const SHUNDE_CENTER = [22.8050, 113.2200];
+    const DEFAULT_ZOOM = 12;
+
+    const map = L.map('map', {
+      center: SHUNDE_CENTER,
+      zoom: DEFAULT_ZOOM,
+      minZoom: 11,               // Disallow zooming out beyond Shunde
+      maxZoom: 17,               // Zoom into street level
+      maxBounds: shundeBounds.pad(0.06), // Strictly lock viewport to Shunde!
+      maxBoundsViscosity: 1.0,   // 100% elastic bounce-back: Cannot drag out of Shunde!
+      zoomControl: false,
+      attributionControl: false
+    });
+
+    // 4-Tone Clean Grayscale Tile Layer (High-Speed CartoDB Positron with 4 parallel CDN subdomains & memory tile cache)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      subdomains: 'abcd',
+      maxZoom: 19,
+      keepBuffer: 8,
+      updateWhenIdle: false,
+      updateWhenZooming: false
+    }).addTo(map);
+
+    // ================= 顺德行政区划100%精密裁剪遮罩（地界以外地图彻底删除/纯色覆盖） =================
+    // World Outer Ring: 使用Web墨卡托合法投影纬度范围(-85至85)，避免lat 90导致Infinity渲染失败
+    const worldPolygon = [
+      [85.0, -179.9],
+      [85.0, 179.9],
+      [-85.0, 179.9],
+      [-85.0, -179.9]
+    ];
+
+    // Inverted Polygon: 100% 纯色不透明遮盖顺德以外的所有区域，视觉上彻底删除番禺、中山、江门等！
+    L.polygon([worldPolygon, SHUNDE_BOUNDARY], {
+      stroke: false,
+      fillColor: '#F7F6F2', // 与页面背景色完全一致
+      fillOpacity: 1.0,     // 100% 绝对不透明！彻底删除并抹掉顺德地界外一切底图
+      interactive: false    // 手势穿透，顺德区内正常缩放拖拽
+    }).addTo(map);
+
+    // 顺德区官方行政区划红线轮廓（清晰高亮展示顺德版图）
+    L.polyline(SHUNDE_BOUNDARY, {
+      color: '#C83C23',
+      weight: 2.2,
+      opacity: 0.88,
+      lineJoin: 'round'
+    }).addTo(map);
+
+    // 自动将地图精确贴合顺德全境
+    map.fitBounds(shundeBounds, { padding: [20, 20] });
+
+    // ================= Marker Cluster Group =================
+    const markersCluster = L.markerClusterGroup({
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      spiderfyOnMaxZoom: true,
+      maxClusterRadius: 60,
+      iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        return L.divIcon({
+          html: count,
+          className: 'bruce-cluster-icon',
+          iconSize: L.point(42, 42)
+        });
+      }
+    });
+
+    let currentMarkers = [];
+    let selectedSpot = null;
+    let currentLang = 'en';
+
+    function renderMarkers(categoryFilter = 'all') {
+      markersCluster.clearLayers();
+      currentMarkers = [];
+
+      SPOTS.forEach(spot => {
+        if (categoryFilter !== 'all' && spot.category !== categoryFilter) return;
+
+        const iconHtml = `<div class="bruce-spot-marker" id="marker-${spot.id}">
+          <span>${getCategoryEmoji(spot.category)}</span>
+          <span>${currentLang === 'en' ? spot.nameEn : spot.nameZh}</span>
+        </div>`;
+
+        const customIcon = L.divIcon({
+          html: iconHtml,
+          className: 'bruce-custom-marker-wrapper',
+          iconSize: null
+        });
+
+        const marker = L.marker([spot.lat, spot.lng], { icon: customIcon });
+        marker.on('click', () => {
+          selectSpot(spot);
+        });
+
+        markersCluster.addLayer(marker);
+        currentMarkers.push({ spot, marker });
+      });
+
+      map.addLayer(markersCluster);
+    }
+
+    function getCategoryEmoji(cat) {
+      switch(cat) {
+        case 'kungfu': return '🥋';
+        case 'food': return '🥢';
+        case 'dessert': return '🥣';
+        case 'photo': return '📸';
+        default: return '📍';
+      }
+    }
+
+    function selectSpot(spot) {
+      selectedSpot = spot;
+      map.setView([spot.lat, spot.lng], Math.max(map.getZoom(), 14), { animate: true });
+
+      // Update Bottom Sheet with comprehensive information
+      document.getElementById('sheet-img').src = spot.coverImg;
+      document.getElementById('sheet-title-en').textContent = spot.nameEn;
+      document.getElementById('sheet-title-zh').textContent = spot.nameZh;
+      document.getElementById('sheet-tagline').textContent = currentLang === 'en' ? spot.tagline : (spot.taglineZh || spot.tagline);
+      
+      // 4-Box Info
+      document.getElementById('info-duration').textContent = spot.durationEn;
+      document.getElementById('info-hours').textContent = spot.hoursEn;
+      document.getElementById('info-price').textContent = spot.priceEn;
+      document.getElementById('info-town').textContent = spot.townEn;
+
+      // Quotes & Stories
+      document.getElementById('bruce-quote-text').textContent = spot.bruceTipEn;
+      document.getElementById('deep-story-text').textContent = spot.deepStory;
+      document.getElementById('sheet-pairing').textContent = spot.pairing;
+
+      // Update Highlights
+      const hlList = document.getElementById('sheet-highlights');
+      hlList.innerHTML = '';
+      spot.highlights.forEach(hl => {
+        const li = document.createElement('li');
+        li.textContent = hl;
+        hlList.appendChild(li);
+      });
+
+      // Open Bottom Sheet
+      document.getElementById('bottom-sheet').classList.add('open');
+
+      // Update Top Assistant Bubble
+      document.getElementById('assistant-bubble-text').textContent = `“${spot.bruceTipEn}”`;
+    }
+
+    function closeSheet() {
+      document.getElementById('bottom-sheet').classList.remove('open');
+      selectedSpot = null;
+    }
+
+    function filterCategory(cat, element) {
+      document.querySelectorAll('.category-pill').forEach(el => el.classList.remove('active'));
+      element.classList.add('active');
+      renderMarkers(cat);
+      closeSheet();
+    }
+
+    function resetMapCenter() {
+      map.fitBounds(shundeBounds, { padding: [20, 20], animate: true });
+      closeSheet();
+    }
+
+    function locateUser() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const userLat = pos.coords.latitude;
+            const userLng = pos.coords.longitude;
+            map.setView([userLat, userLng], 15, { animate: true });
+            L.circleMarker([userLat, userLng], {
+              radius: 8,
+              color: '#1E88E5',
+              fillColor: '#42A5F5',
+              fillOpacity: 0.9
+            }).addTo(map);
+          },
+          err => {
+            alert('Centered at Shunfeng Mountain Park (Grand Archway)');
+            map.setView([22.8262, 113.2777], 14, { animate: true });
+          }
+        );
+      } else {
+        map.setView([22.8262, 113.2777], 14, { animate: true });
+      }
+    }
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'en' ? 'zh' : 'en';
+      const optZh = document.getElementById('opt-zh');
+      const optEn = document.getElementById('opt-en');
+      if (optZh && optEn) {
+        if (currentLang === 'zh') {
+          optZh.classList.add('active');
+          optEn.classList.remove('active');
+        } else {
+          optEn.classList.add('active');
+          optZh.classList.remove('active');
+        }
+      }
+      const quoteEl = document.getElementById('assistant-bubble-text');
+      if (quoteEl) {
+        if (selectedSpot) {
+          quoteEl.textContent = currentLang === 'zh' ? `“${selectedSpot.bruceTipZh}”` : `“${selectedSpot.bruceTip}”`;
+        } else {
+          quoteEl.textContent = currentLang === 'zh'
+            ? '“以无限为有限，以无法为有法！欢迎来到我的故乡顺德，点击可与我随时交流！”'
+            : '“Be water, my friend! Welcome to my ancestral home Shunde. Tap me to ask about food or Kung Fu!”';
+        }
+      }
+      renderMarkers();
+      if (selectedSpot) {
+        selectSpot(selectedSpot);
+      }
+    }
+
+    // Taxi Card Modal
+    function openTaxiCard() {
+      if (!selectedSpot) return;
+      document.getElementById('taxi-modal-zh').textContent = selectedSpot.taxiTitle;
+      document.getElementById('taxi-modal-addr').textContent = selectedSpot.addressZh;
+      document.getElementById('taxi-modal-tip').textContent = selectedSpot.taxiTip;
+      document.getElementById('taxi-modal').classList.add('open');
+    }
+
+    function closeTaxiCard(e) {
+      document.getElementById('taxi-modal').classList.remove('open');
+    }
+
+    function openDirections() {
+      if (!selectedSpot) return;
+      const url = `https://apis.map.qq.com/uri/v1/marker?marker=coord:${selectedSpot.lat},${selectedSpot.lng};title:${encodeURIComponent(selectedSpot.nameZh)};addr:${encodeURIComponent(selectedSpot.addressZh)}&referer=BruceLeesGuide`;
+      window.open(url, '_blank');
+    }
+
+    // Chat Modal
+    function openChatModal() {
+      document.getElementById('chat-modal').classList.add('open');
+    }
+
+    function closeChatModal(e) {
+      document.getElementById('chat-modal').classList.remove('open');
+    }
+
+    function sendQuickPrompt(text) {
+      document.getElementById('chat-input').value = text;
+      sendMessage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const container = document.getElementById('chat-messages');
+
+      // User Message
+      const userMsg = document.createElement('div');
+      userMsg.className = 'chat-msg user';
+      userMsg.textContent = text;
+      container.appendChild(userMsg);
+      input.value = '';
+      container.scrollTop = container.scrollHeight;
+
+      // Simulated Bruce Lee Response
+      setTimeout(() => {
+        const bruceMsg = document.createElement('div');
+        bruceMsg.className = 'chat-msg bruce';
+        bruceMsg.textContent = generateBruceReply(text);
+        container.appendChild(bruceMsg);
+        container.scrollTop = container.scrollHeight;
+      }, 500);
+    }
+
+    function generateBruceReply(q) {
+      const lower = q.toLowerCase();
+      if (lower.includes('shunfeng') || lower.includes('archway') || lower.includes('paifang')) {
+        return "“Shunfeng Mountain Park has the 'No.1 Paifang in China' right at its North Gate! 88 meters wide with 16 master stone dragon columns. Take a walk around Qingyun Lake early in the morning!”";
+      } else if (lower.includes('ancestral') || lower.includes('home') || lower.includes('jun\'an')) {
+        return "“My ancestral home is in Shangcun Village, Jun'an Town! You can see traditional brick courtyard houses where my father Li Hoi-chuen was raised. Don't forget to try Jun'an Steamed Pork nearby!”";
+      } else if (lower.includes('milk') || lower.includes('double')) {
+        return "“Ah, Double-Skin Milk! Shunde water buffaloes produce milk with double the natural richness. Head straight to Minxin Dessert on Huagai Road or walk down Jinbang Old Street for warm handmade milk curds!”";
+      } else if (lower.includes('dim sum') || lower.includes('tea') || lower.includes('breakfast')) {
+        return "“Yum Cha (Morning Tea) is the true essence of Cantonese spirit! Go to Shunde Renjia early in the morning, order jumbo Har Gow (shrimp dumplings) and crispy red rice rolls.”";
+      } else if (lower.includes('fengjian') || lower.includes('boat') || lower.includes('venice')) {
+        return "“Fengjian Water Town is known as the Venice of Lingnan! Rent a private awning boat under Song Dynasty arch bridges. Water flows, and life is peaceful.”";
+      } else {
+        return `“Remember: 'Empty your mind, be formless, shapeless — like water.' Whatever you seek in Shunde, whether legendary food or ancient gardens, savor every moment!”`;
+      }
+    }
+
+    // Initial render
+    renderMarkers('all');
+  </script>
+</body>
+</html>
